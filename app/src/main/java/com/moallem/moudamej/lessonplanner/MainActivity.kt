@@ -215,6 +215,8 @@ private fun HomePage(
         }
         Spacer(Modifier.height(18.dp))
         Text("المصمم: معلم دمج", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Teal, fontWeight = FontWeight.Bold)
+        Text("بالتعاون مع أبو محمد وأبو عبدالله وعصام", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink, fontSize = 12.sp)
+        Text("منصة معلمي الجزيرة السورية", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Navy, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Text("نسخة أولية تعليمية تعمل دون إنترنت", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Color.Gray, fontSize = 12.sp)
     }
 }
@@ -284,6 +286,8 @@ private fun MethodsPage(onBack: () -> Unit, onSelect: (TeachingMethod) -> Unit) 
         }
         Spacer(Modifier.height(12.dp))
         Text("المصمم: معلم دمج", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Teal, fontWeight = FontWeight.Bold)
+        Text("بالتعاون مع أبو محمد وأبو عبدالله وعصام", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink, fontSize = 12.sp)
+        Text("منصة معلمي الجزيرة السورية", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Navy, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }
 
@@ -311,6 +315,8 @@ private fun MethodDetailPage(item: TeachingMethod, onBack: () -> Unit) {
         }
         Spacer(Modifier.height(16.dp))
         Text("المصمم: معلم دمج", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Teal, fontWeight = FontWeight.Bold)
+        Text("بالتعاون مع أبو محمد وأبو عبدالله وعصام", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink, fontSize = 12.sp)
+        Text("منصة معلمي الجزيرة السورية", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Navy, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }
 
@@ -344,6 +350,8 @@ private fun PlanPage(
         }
         Spacer(Modifier.height(14.dp))
         Text("المصمم: معلم دمج", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Teal, fontWeight = FontWeight.Bold)
+        Text("بالتعاون مع أبو محمد وأبو عبدالله وعصام", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink, fontSize = 12.sp)
+        Text("منصة معلمي الجزيرة السورية", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Navy, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         Text("هذه مسودة منظمة؛ راجع الأهداف والخطوات بما يناسب المنهاج ومستوى التلاميذ.", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Color.Gray, fontSize = 12.sp)
     }
 }
