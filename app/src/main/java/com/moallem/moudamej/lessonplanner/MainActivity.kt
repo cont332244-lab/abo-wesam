@@ -54,6 +54,40 @@ private val methods = listOf(
     TeachingMethod("التعلّم بالاستقصاء", "🧪", "طرح سؤال ثم جمع الملاحظات والأدلة للوصول إلى تفسير.", "١. ابدأ بسؤال.\n٢. توقّع النتائج.\n٣. اجمع الملاحظات أو البيانات.\n٤. استنتج وناقش الأدلة.", "العلوم والبحث والملاحظة.")
 )
 
+
+private data class AutomaticPlan(
+    val subject: String, val prior: String, val objectives: String, val intro: String,
+    val method: String, val steps: String, val materials: String, val assessment: String,
+    val guidance: String, val support: String, val closure: String
+)
+
+private fun buildAutomaticPlan(title: String): AutomaticPlan {
+    val t = title.trim().lowercase()
+    val math = listOf("جمع", "طرح", "ضرب", "قسمة", "كسر", "كسور", "عدد", "أعداد", "هندسة", "مستقيم", "زاوية", "محيط", "مساحة", "قياس", "مضاعف", "قاسم", "معادلة", "رياضيات").any { t.contains(it) }
+    val english = listOf("english", "إنجليزي", "انكليزي", "حروف", "كلمات", "ضمائر", "verb", "noun").any { t.contains(it) }
+    val science = listOf("علوم", "نبات", "حيوان", "ماء", "هواء", "طاقة", "جسم الإنسان", "كهرباء", "مادة", "بيئة", "ضوء", "حرارة", "دورة").any { t.contains(it) }
+    val social = listOf("تاريخ", "جغرافيا", "وطن", "خريطة", "سكان", "حضارة", "سوريا", "سورية", "اجتماعيات").any { t.contains(it) }
+    val arabic = listOf("لغة عربية", "نحو", "فاعل", "مفعول", "مبتدأ", "خبر", "فعل", "اسم", "حرف", "إملاء", "املاء", "قراءة", "نص", "تعبير", "همزة", "تاء", "جمع المذكر", "جمع المؤنث").any { t.contains(it) }
+    val subject = when { math -> "الرياضيات"; english -> "اللغة الإنكليزية"; science -> "العلوم"; social -> "الاجتماعيات"; arabic -> "اللغة العربية"; else -> "تُحدَّد وفق عنوان الدرس" }
+    val method = when { math -> "التعلّم بالاكتشاف وحلّ المشكلات"; science -> "الاستقصاء والملاحظة والتجريب الآمن"; english -> "النمذجة والتكرار والممارسة التواصلية"; social -> "الحوار وتحليل الصور والخرائط"; else -> "التعلّم النشط والحوار الموجّه" }
+    val prior = "ابدأ بسؤال شفهي قصير مرتبط بعنوان «$title»، واستمع إلى إجابات التلاميذ لتقدير معرفتهم السابقة، ثم اربط إجاباتهم بهدف الدرس."
+    val objectives = "بنهاية الحصة يُتوقّع أن يكون التلميذ قادرًا على: (1) شرح الفكرة الأساسية المرتبطة بـ«$title» بلغته. (2) تمييز المفهوم أو القاعدة في مثال مناسب. (3) تطبيق ما تعلّمه في نشاط قصير. (4) تفسير إجابته أو عرض خطوات تفكيره."
+    val intro = when { math -> "اكتب مسألة بسيطة مرتبطة بعنوان الدرس، واطلب من التلاميذ توقّع طريقة الحل قبل تقديم القاعدة."; science -> "اعرض صورة أو موقفًا من الحياة اليومية مرتبطًا بالموضوع، ثم اسأل: ماذا نلاحظ؟ ولماذا يحدث ذلك؟"; english -> "اعرض كلمة أو صورة مرتبطة بالعنوان، وانطقها بوضوح، ثم اطلب من التلاميذ التوقّع أو التكرار."; social -> "اعرض صورة أو خريطة أو حقيقة قصيرة ذات صلة بالعنوان، واطلب من التلاميذ وصف ما يلاحظونه."; else -> "ابدأ بسؤال محفّز أو مثال قصير يتضمن فكرة من عنوان الدرس، ثم اربط إجابات التلاميذ بموضوع الحصة." }
+    val steps = when {
+        math -> "١. عرض مثال محسوس أو مرسوم.\n٢. نمذجة الحل خطوةً خطوةً مع التفكير بصوت مسموع.\n٣. حل مثال مشترك بمشاركة التلاميذ.\n٤. تكليف التلاميذ بمسألة فردية ثم مناقشة استراتيجيات الحل.\n٥. تصحيح الأخطاء الشائعة وتلخيص القاعدة."
+        science -> "١. طرح سؤال استقصائي مرتبط بالموضوع.\n٢. طلب التنبؤات وتسجيلها.\n٣. فحص صورة أو أداة أو ملاحظة مناسبة وآمنة.\n٤. مقارنة الملاحظات بالتنبؤات وصياغة استنتاج.\n٥. ربط الاستنتاج بحياة التلميذ."
+        english -> "١. تقديم المفردات أو التركيب بنموذج واضح.\n٢. شرح المعنى باستخدام صورة أو مثال.\n٣. تدريب جماعي موجّه على النطق أو الاستخدام.\n٤. ممارسة ثنائية قصيرة.\n٥. مهمة فردية للتحقق من الفهم."
+        social -> "١. تحديد الفكرة أو المكان أو الحدث الأساسي.\n٢. قراءة النص أو تحليل الصورة والخريطة.\n٣. استخراج المعلومات المهمة وتفسيرها.\n٤. مناقشة سؤال يربط الدرس بالحياة.\n٥. تلخيص النتائج بكلمات التلاميذ."
+        else -> "١. تقديم مثال واضح يشرح الفكرة الواردة في العنوان.\n٢. شرح المفهوم أو القاعدة على مراحل قصيرة.\n٣. التفكير بصوت مسموع أثناء حل مثال.\n٤. تنفيذ نشاط موجّه ثم تدريب فردي.\n٥. مناقشة الإجابات وتثبيت الفكرة الأساسية."
+    }
+    val materials = when { math -> "السبورة، الكتاب المدرسي، بطاقات أعداد أو أشكال، وأدوات بسيطة للرسم."; science -> "الكتاب المدرسي، صور أو مخططات، وأدوات ملاحظة آمنة متاحة."; english -> "الكتاب، بطاقات كلمات وصور، والسبورة."; social -> "الكتاب، خريطة أو صورة مرتبطة بالدرس، والسبورة."; else -> "الكتاب المدرسي، السبورة، وأمثلة أو بطاقات تعليمية مرتبطة بالعنوان." }
+    val assessment = "أثناء الحصة: اطرح سؤالين قصيرين يختبران الفهم، واطلب من تلميذ شرح الإجابة. في الختام: أعطِ مهمة فردية قصيرة مرتبطة بـ«$title». معيار النجاح المقترح: إجابة صحيحة مع تفسير أو تطبيق مناسب."
+    val guidance = "وزّع زمن الحصة: 5 دقائق للتمهيد، 10 دقائق للشرح والنمذجة، 15 دقيقة للنشاط والممارسة، 10 دقائق للتقويم والتغذية الراجعة، و5 دقائق للتلخيص. استخدم تعليمات قصيرة، وتحقّق من فهم المطلوب قبل بدء النشاط، ولا تنتقل إلى خطوة جديدة قبل التأكد من استيعاب الفكرة الأساسية."
+    val support = "للتلاميذ الذين يحتاجون إلى دعم: قسّم المهمة إلى خطوات أصغر، وقدّم مثالًا محلولًا أو صورة/بطاقة، واسمح بوقت إضافي وإجابة شفهية عند الحاجة. للمتقدمين: أضف سؤالًا يتطلب تفسيرًا أو تطبيقًا جديدًا. راعِ الفروق الفردية دون إحراج أي تلميذ."
+    val closure = "اطلب من التلميذ إكمال العبارة: «أهم ما تعلّمته اليوم هو…». واجب مقترح: سؤال أو تطبيق واحد من الكتاب أو مثال من الحياة اليومية مرتبط بعنوان «$title»."
+    return AutomaticPlan(subject, prior, objectives, intro, method, steps, materials, assessment, guidance, support, closure)
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -153,17 +187,11 @@ private fun HomePage(
             FeatureTile("🧠", "طرائق حديثة", "أفكار مصوّرة", Modifier.weight(1f), onClick = onMethods)
         }
         Spacer(Modifier.height(18.dp))
-        Text("بيانات الدرس", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Navy)
+        Text("اكتب عنوان الدرس فقط", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Navy)
         Spacer(Modifier.height(8.dp))
-        FormField("الصف الدراسي", grade, onGrade, "مثال: الصف السادس")
-        FormField("المادة", subject, onSubject, "مثال: الرياضيات")
-        FormField("عنوان الدرس", lesson, onLesson, "اكتب عنوان الدرس")
-        FormField("المدة الزمنية", duration, onDuration, "45 دقيقة")
-        FormField("الخبرات السابقة", prior, onPrior, "ماذا يعرف التلاميذ مسبقًا؟")
-        FormField("الأهداف التعليمية", objectives, onObjectives, "ماذا تتوقع أن يحقق التلميذ؟", minLines = 2)
-        FormField("طريقة التدريس", method, onMethod, "مثال: التعلّم التعاوني")
-        FormField("الوسائل التعليمية", materials, onMaterials, "صور، بطاقات، سبورة...")
-        FormField("التقويم", assessment, onAssessment, "كيف ستتحقق من الفهم؟")
+        Text("سيتولى التطبيق اقتراح المادة والأهداف والتمهيد وخطوات الشرح والأنشطة والتقويم والإرشادات تلقائيًا، دون أسئلة إضافية.", color = Ink, fontSize = 14.sp, lineHeight = 23.sp)
+        Spacer(Modifier.height(8.dp))
+        FormField("عنوان الدرس", lesson, onLesson, "مثال: الكسور الاعتيادية")
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = onGenerate,
@@ -295,21 +323,23 @@ private fun PlanPage(
         Header("تحضير الدرس", onBack)
         Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.padding(18.dp)) {
-                Text(if (lesson.isBlank()) "عنوان الدرس: يُستكمل من المعلم" else lesson, fontSize = 22.sp, color = Navy, fontWeight = FontWeight.Bold)
+                val auto = remember(lesson) { buildAutomaticPlan(lesson) }
+                Text(if (lesson.isBlank()) "عنوان الدرس: اكتب العنوان للبدء" else lesson, fontSize = 22.sp, color = Navy, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                Text("الصف: $grade", color = Ink)
-                Text("المادة: $subject", color = Ink)
-                Text("المدة: $duration", color = Ink)
+                Text("الصف المقترح: الصف السادس الأساسي", color = Ink)
+                Text("المادة المستنتجة: ${auto.subject}", color = Ink)
+                Text("المدة المقترحة: 45 دقيقة", color = Ink)
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
-                PlanSection("الخبرات السابقة", prior.ifBlank { "يستكشف المعلم معرفة التلاميذ من خلال سؤال تمهيدي." })
-                PlanSection("الأهداف التعليمية", objectives.ifBlank { "أن يعرّف التلميذ المفهوم الأساسي، وأن يطبّقه في مثال مناسب، وأن يشارك في النشاط الصفي." })
-                PlanSection("التمهيد", "اعرض سؤالًا قصيرًا أو صورة مرتبطة بعنوان الدرس، ثم استمع إلى إجابات التلاميذ.")
-                PlanSection("طريقة التدريس", method.ifBlank { "التعلّم النشط" })
-                PlanSection("خطوات سير الدرس", "١. التهيئة وربط الدرس بالخبرات السابقة.\n٢. عرض المفهوم مع مثال واضح.\n٣. تنفيذ نشاط فردي أو تعاوني.\n٤. مناقشة الإجابات وتصحيح التصورات الخاطئة.\n٥. تلخيص أهم الأفكار.")
-                PlanSection("الوسائل التعليمية", materials.ifBlank { "السبورة والكتاب وصور أو بطاقات تعليمية." })
-                PlanSection("التقويم", assessment.ifBlank { "أسئلة شفوية وتطبيق قصير للتأكد من تحقق الأهداف." })
-                PlanSection("الدعم ومراعاة الفروق الفردية", "قدّم مثالًا إضافيًا أو بطاقة مصوّرة للتلاميذ الذين يحتاجون إلى دعم، ومهمة إثرائية للمتقدمين، مع إتاحة وقت إضافي عند الحاجة.")
-                PlanSection("الواجب أو النشاط الختامي", "نشاط قصير يطبّق فيه التلميذ ما تعلمه، مع توضيح المطلوب قبل نهاية الحصة.")
+                PlanSection("الخبرات السابقة", auto.prior)
+                PlanSection("الأهداف التعليمية", auto.objectives)
+                PlanSection("التمهيد", auto.intro)
+                PlanSection("طريقة التدريس المقترحة", auto.method)
+                PlanSection("خطوات سير الدرس", auto.steps)
+                PlanSection("الوسائل التعليمية", auto.materials)
+                PlanSection("التقويم وأسئلة التحقق", auto.assessment)
+                PlanSection("إرشادات تنفيذ الدرس", auto.guidance)
+                PlanSection("الدعم ومراعاة الفروق الفردية", auto.support)
+                PlanSection("النشاط الختامي والواجب", auto.closure)
             }
         }
         Spacer(Modifier.height(14.dp))
