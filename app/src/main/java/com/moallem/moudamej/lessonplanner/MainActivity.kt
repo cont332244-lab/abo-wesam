@@ -63,10 +63,9 @@ private fun PlannerScreen(activity: ComponentActivity) {
     var method by remember { mutableStateOf(teachingMethods[0]) }
     var duration by remember { mutableStateOf("45 دقيقة") }
     var notes by remember { mutableStateOf("") }
-    var apiKey by remember { mutableStateOf("") }
     var plan by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf("يتطلب التوليد مفتاح Google Gemini API. لا يُحفظ المفتاح داخل التطبيق.") }
+    var message by remember { mutableStateOf("يعمل التطبيق دون إنترنت، ولا يحتاج إلى مفتاح API. أدخل عنوان الدرس ثم أنشئ التحضير.") }
 
     Column(Modifier.fillMaxSize().background(Pale).verticalScroll(rememberScrollState()).padding(16.dp)) {
         Card(colors = CardDefaults.cardColors(containerColor = Navy), shape = RoundedCornerShape(24.dp)) {
@@ -85,33 +84,19 @@ private fun PlannerScreen(activity: ComponentActivity) {
         InputField("مدة الحصة", duration, { duration = it }, "45 دقيقة")
         InputField("ملاحظات إضافية (اختياري)", notes, { notes = it }, "مستوى التلاميذ أو أهداف محددة", 2)
         Spacer(Modifier.height(12.dp))
-        Text("الاتصال بالذكاء الاصطناعي", fontSize = 18.sp, color = Navy, fontWeight = FontWeight.Bold)
-        Text("احصل على مفتاح Gemini من aistudio.google.com/app/apikey. يُرسل المفتاح إلى Google لتوليد التحضير ولا يُحفظ داخل التطبيق.", color = Ink, fontSize = 13.sp, lineHeight = 20.sp)
-        OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, modifier = Modifier.fillMaxWidth(),
-            label = { Text("Gemini API Key") }, placeholder = { Text("ألصق المفتاح هنا") },
-            visualTransformation = PasswordVisualTransformation(), singleLine = true, shape = RoundedCornerShape(13.dp))
+        Text("إنشاء التحضير دون إنترنت", fontSize = 18.sp, color = Navy, fontWeight = FontWeight.Bold)
+        Text("لا يحتاج التطبيق إلى اتصال أو مفتاح API. يُنشئ تحضيرًا محليًا منظمًا حسب الصف والمادة وطريقة التدريس، ويمكنك تعديله قبل الطباعة.", color = Ink, fontSize = 13.sp, lineHeight = 20.sp)
         Spacer(Modifier.height(12.dp))
         Button(onClick = {
-            when {
-                lesson.isBlank() -> message = "يرجى إدخال عنوان الدرس أولاً."
-                apiKey.isBlank() -> message = "أدخل مفتاح Gemini API لتوليد التحضير عبر الإنترنت."
-                else -> {
-                    busy = true
-                    message = "جارٍ إعداد التحضير بالذكاء الاصطناعي..."
-                    thread {
-                        val result = generatePlan(apiKey.trim(), grade, subject, lesson.trim(), method, duration, notes)
-                        Handler(Looper.getMainLooper()).post {
-                            busy = false
-                            if (result.startsWith("ERROR:")) message = result.removePrefix("ERROR:")
-                            else { plan = result; message = "اكتمل التحضير. راجعه وعدّله ثم انسخه أو اطبعه." }
-                        }
-                    }
-                }
+            if (lesson.isBlank()) {
+                message = "يرجى إدخال عنوان الدرس أولاً."
+            } else {
+                plan = generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
+                message = "تم إنشاء التحضير محليًا دون إنترنت. راجعه وعدّله ثم انسخه أو اطبعه."
             }
-        }, modifier = Modifier.fillMaxWidth().height(54.dp), enabled = !busy,
+        }, modifier = Modifier.fillMaxWidth().height(54.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Teal), shape = RoundedCornerShape(15.dp)) {
-            if (busy) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
-            else Text("✨ إنشاء التحضير بالذكاء الاصطناعي", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("📘 إنشاء التحضير دون إنترنت", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(8.dp))
         Text(message, color = Ink, fontSize = 13.sp, lineHeight = 20.sp)
@@ -170,54 +155,90 @@ private fun InputField(label: String, value: String, onValue: (String) -> Unit, 
     }
 }
 
-private fun generatePlan(apiKey: String, grade: String, subject: String, lesson: String, method: String, duration: String, notes: String): String {
-    var connection: HttpURLConnection? = null
-    return try {
-        val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + URLEncoder.encode(apiKey, "UTF-8")
-        connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"; connectTimeout = 20000; readTimeout = 60000; doOutput = true
-            setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-        }
-        val prompt = """
-أنت خبير في طرائق التدريس وتصميم الدروس للمرحلة الأساسية. أنشئ تحضيرًا عمليًا مفصلًا باللغة العربية، مناسبًا للصف والعمر، وليس قالبًا عامًا.
+private fun generateOfflinePlan(grade: String, subject: String, lesson: String, method: String, duration: String, notes: String): String {
+    val noteText = if (notes.isBlank()) "لا توجد ملاحظات إضافية." else notes
+    val methodDescription = when (method) {
+        "التعلّم بالاكتشاف" -> "يعرض المعلم أمثلة، ويوجه التلاميذ إلى الملاحظة والمقارنة واكتشاف الفكرة، ثم يناقش استنتاجاتهم."
+        "التعلّم التعاوني" -> "يقسم المعلم التلاميذ إلى مجموعات صغيرة بأدوار واضحة، ويكلفهم بمهمة ثم تعرض كل مجموعة نتائجها."
+        "حلّ المشكلات" -> "يطرح المعلم مشكلة مرتبطة بالدرس، ويطلب اقتراح الحلول واختبارها ومناقشة الطريقة الأنسب."
+        "الحوار والمناقشة" -> "يطرح المعلم أسئلة متدرجة، ويمنح التلاميذ فرصة للتفكير والتعبير، ثم يلخص الإجابات ويصحح المفاهيم."
+        "العصف الذهني" -> "يجمع المعلم أفكار التلاميذ حول سؤال محوري، ثم يصنفها ويناقش مدى ارتباطها بالدرس."
+        "التعلّم باللعب" -> "ينظم المعلم لعبة تعليمية قصيرة مرتبطة بالهدف، ثم يربط نتائجها بالمفهوم المستهدف."
+        "الطريقة الاستقرائية" -> "يقدم المعلم أمثلة متنوعة، ويوجه التلاميذ إلى ملاحظة أوجه الشبه والاختلاف واستنتاج القاعدة."
+        "الطريقة الاستنتاجية" -> "يشرح المعلم القاعدة أولًا، ثم يقدم أمثلة محلولة ويطلب تطبيقها على أمثلة جديدة."
+        "التعليم المتمايز" -> "يقدم المعلم مهامًا متدرجة: دعمًا إضافيًا للمتعثرين، ومهمة أساسية للجميع، ونشاطًا إثرائيًا للمتقدمين."
+        "الشرح والنمذجة" -> "يوضح المعلم المهارة خطوة بخطوة، ويحل مثالًا بصوت مسموع، ثم يوجه التلاميذ إلى التطبيق المستقل."
+        else -> "يمهد المعلم بسؤال أو مثال، ويعرض المفهوم تدريجيًا، ثم يوجه تدريبًا مشتركًا يتبعه تطبيق فردي."
+    }
+    val activity = when (subject) {
+        "الرياضيات" -> "حل مثال نموذجي على اللوح، ثم مسائل متدرجة يشرح التلاميذ خطوات حلها."
+        "اللغة العربية" -> "قراءة مثال قصير، وتحديد المهارة المستهدفة، ثم تطبيقها شفهيًا وكتابيًا في جمل."
+        "اللغة الإنكليزية" -> "التدرب على مفردات أو تراكيب الدرس، ثم استخدامها في جمل أو حوار قصير."
+        "العلوم" -> "ملاحظة مثال أو ظاهرة آمنة، وتسجيل الملاحظات ومقارنتها بالمفهوم المستهدف."
+        "الاجتماعيات" -> "قراءة نص أو خريطة أو صورة، واستخراج المعلومات والإجابة عن أسئلة الفهم والاستنتاج."
+        "التربية الإسلامية" -> "مناقشة الفكرة أو القيمة المستهدفة وربطها بموقف عملي من الحياة اليومية."
+        "الرياضة" -> "إحماء مناسب ثم تدريب متدرج على المهارة مع مراعاة السلامة والفروق الفردية."
+        else -> "تنفيذ نشاط تطبيقي قصير مرتبط بعنوان الدرس، ثم عرض النتائج ومناقشتها."
+    }
+    return """
+تحضير درس
+
+أولًا: معلومات الدرس
 الصف: $grade
 المادة: $subject
 عنوان الدرس: $lesson
-طريقة التدريس المطلوبة: $method
+طريقة التدريس: $method
 مدة الحصة: $duration
-ملاحظات المعلم: $notes
+ملاحظات المعلم: $noteText
 
-اكتب التحضير بعناوين واضحة:
-1. معلومات الدرس.
-2. نواتج التعلم/الأهداف السلوكية القابلة للقياس.
-3. الخبرات السابقة.
-4. التمهيد وإثارة الدافعية.
-5. الوسائل التعليمية.
-6. خطوات سير الدرس بتوزيع زمني يساوي مدة الحصة، مع دور المعلم ودور التلاميذ.
-7. نشاط تطبيقي فردي وتفاعلي.
-8. تقويم تكويني وأسئلة ختامية مع إجابات نموذجية.
-9. مراعاة الفروق الفردية ودعم المتعثرين وإثراء المتقدمين.
-10. الخلاصة والواجب المنزلي.
-اجعل الأنشطة والتقويم متوافقة مع طريقة التدريس المختارة وقابلة للتطبيق في صف حقيقي. لا تفترض صفحات كتاب أو معلومات منهجية غير مؤكدة. إذا كان العنوان غير كافٍ فاذكر افتراضك باختصار. لا تضف مقدمة خارج التحضير.
+ثانيًا: الأهداف التعليمية
+يتوقع من التلميذ أن:
+1. يوضح الفكرة أو المهارة الأساسية في درس $lesson.
+2. يحدد أهم العناصر المرتبطة بالدرس.
+3. يطبق ما تعلمه في مثال مناسب لمستواه.
+4. يجيب عن أسئلة التقويم ويصحح أخطاءه.
+
+ثالثًا: الخبرات السابقة
+مراجعة المعلومات السابقة ذات الصلة من خلال أسئلة قصيرة وتحديد ما يحتاج إلى توضيح.
+
+رابعًا: التمهيد وإثارة الدافعية
+يطرح المعلم سؤالًا أو يعرض صورة أو مثالًا من البيئة القريبة يرتبط بعنوان الدرس، ثم يوضح هدف التعلم.
+
+خامسًا: الوسائل التعليمية
+السبورة والأقلام، الكتاب المدرسي عند توفره، بطاقات وأمثلة وأدوات صفية مناسبة لطبيعة الدرس.
+
+سادسًا: سير الدرس
+1. التهيئة والمراجعة — 5 دقائق: استرجاع الخبرات السابقة وطرح سؤال تمهيدي.
+2. تقديم المفهوم — 10 دقائق: $methodDescription
+3. التدريب الموجه — 10 دقائق: حل مثال مشترك وطرح أسئلة للتحقق من الفهم.
+4. النشاط التطبيقي — 15 دقيقة: $activity
+5. التقويم والخلاصة — 5 دقائق: أسئلة ختامية وتلخيص الفكرة الأساسية.
+
+تنبيه: التوزيع الزمني نموذج لحصة من 45 دقيقة؛ عدّله ليتناسب مع مدة الحصة الفعلية ($duration).
+
+سابعًا: دور المعلم والتلاميذ
+دور المعلم: التنظيم والتوجيه وطرح الأسئلة وملاحظة المشاركة وتقديم تغذية راجعة.
+دور التلاميذ: الملاحظة والمناقشة وتنفيذ النشاط وشرح طريقة التفكير ومراجعة الإجابات.
+
+ثامنًا: التقويم
+1. ما الفكرة الأساسية في درس $lesson؟
+2. قدم مثالًا يوضح فهمك للدرس.
+3. ما النقطة التي تحتاج إلى تدريب إضافي؟
+تُعدّل الأسئلة لتناسب المحتوى الدقيق للدرس، لأن هذا التحضير أُنشئ محليًا من دون اتصال بالإنترنت.
+
+تاسعًا: مراعاة الفروق الفردية والدمج
+- المتعثرون: تعليمات قصيرة، مثال محلول، بطاقات أو صور، وتقسيم المهمة إلى خطوات.
+- بقية التلاميذ: تنفيذ المهمة الأساسية مع متابعة المعلم.
+- المتقدمون: سؤال إثرائي أو مثال جديد يتطلب التفسير.
+- عند الحاجة: وقت إضافي والتحقق من الفهم دون إحراج.
+
+عاشرًا: الخلاصة والواجب
+يلخص التلاميذ ما تعلموه بجملة أو مثال، ثم يكلفهم المعلم بتدريب قصير مناسب للدرس من الكتاب عند توفره أو من إعداد المعلم.
+
+إعداد: معلم دمج
+بالتعاون مع أبو محمد وأبو عبدالله وعصام
+منصة معلمي الجزيرة السورية
 """.trimIndent()
-        val request = JSONObject()
-            .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
-            .put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 7000))
-        OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(request.toString()) }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val response = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        if (code !in 200..299) {
-            val detail = try { JSONObject(response).optJSONObject("error")?.optString("message") ?: response.take(400) } catch (_: Exception) { response.take(400) }
-            "ERROR:تعذّر إنشاء التحضير (HTTP $code): $detail"
-        } else {
-            val parts = JSONObject(response).optJSONArray("candidates")?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")
-            val output = if (parts == null) "" else (0 until parts.length()).mapNotNull { parts.optJSONObject(it)?.optString("text") }.joinToString("\n")
-            if (output.isBlank()) "ERROR:لم يصل نص التحضير. تحقق من المفتاح وحاول مجددًا." else output
-        }
-    } catch (e: Exception) {
-        "ERROR:تعذّر الاتصال. تحقق من الإنترنت ومفتاح Gemini API. التفاصيل: " + (e.message ?: "خطأ غير معروف")
-    } finally { connection?.disconnect() }
 }
 
 private fun printPlan(context: Context, text: String) {
