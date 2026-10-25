@@ -78,7 +78,7 @@ private fun PlannerScreen(activity: ComponentActivity) {
     var savedPlans by remember { mutableStateOf(try { val a = JSONArray(prefs.getString("saved_plans", "[]")); (0 until a.length()).map { a.getJSONObject(it) } } catch (_: Exception) { emptyList<JSONObject>() }) }
     val wordLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/msword")) { uri ->
         if (uri != null && plan.isNotBlank()) try {
-            val html = "<html><meta charset=\\"UTF-8\\"><body dir=\\"rtl\\"><pre style=\\"white-space:pre-wrap;font-family:Arial\\">" + plan.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;") + "</pre></body></html>"
+            val html = "<html><meta charset=\"UTF-8\"><body dir=\"rtl\"><pre style=\"white-space:pre-wrap;font-family:Arial\">" + plan.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;") + "</pre></body></html>"
             activity.contentResolver.openOutputStream(uri)?.use { it.write(html.toByteArray(Charsets.UTF_8)) }
             message = "تم تصدير الملف لفتحه وتعديله في Word."
         } catch (_: Exception) { message = "تعذر حفظ ملف Word." }
@@ -162,7 +162,9 @@ private fun PlannerScreen(activity: ComponentActivity) {
         Spacer(Modifier.height(20.dp))
         HorizontalDivider()
         Spacer(Modifier.height(12.dp))
-        Text("إعداد: $signature", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Teal, fontWeight = FontWeight.Bold)\n        if (teacher.isNotBlank()) Text("المعلم: $teacher", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink)\n        if (school.isNotBlank()) Text("المدرسة: $school", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink)
+        Text("إعداد: $signature", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Teal, fontWeight = FontWeight.Bold)
+        if (teacher.isNotBlank()) Text("المعلم: $teacher", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink)
+        if (school.isNotBlank()) Text("المدرسة: $school", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink)
         Text("بالتعاون مع أبو محمد وأبو عبدالله وعصام", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink, fontSize = 12.sp)
         Text("منصة معلمي الجزيرة السورية", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Navy, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
