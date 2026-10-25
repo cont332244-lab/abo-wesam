@@ -11,7 +11,7 @@ import android.print.PrintManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
+import androidx.activity.compose.setContent\nimport androidx.activity.compose.rememberLauncherForActivityResult\nimport androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun PlannerScreen(activity: ComponentActivity) {
-    var grade by remember { mutableStateOf(grades[5]) }
+    var grade by remember { mutableStateOf(grades[0]) }
     var subject by remember { mutableStateOf(subjects[0]) }
     var lesson by remember { mutableStateOf("") }
     var method by remember { mutableStateOf(teachingMethods[0]) }
@@ -65,7 +65,22 @@ private fun PlannerScreen(activity: ComponentActivity) {
     var notes by remember { mutableStateOf("") }
     var plan by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf("يعمل التطبيق دون إنترنت، ولا يحتاج إلى مفتاح API. أدخل عنوان الدرس ثم أنشئ التحضير.") }
+    var message by remember { mutableStateOf("يعمل التطبيق دون إنترنت بقوالب جاهزة، ولا يحتاج إلى مفتاح API.") }
+    val prefs = remember { activity.getSharedPreferences("planner_settings", Context.MODE_PRIVATE) }
+    var teacher by remember { mutableStateOf(prefs.getString("teacher", "") ?: "") }
+    var school by remember { mutableStateOf(prefs.getString("school", "") ?: "") }
+    var signature by remember { mutableStateOf(prefs.getString("signature", "معلم دمج") ?: "معلم دمج") }
+    var curriculum by remember { mutableStateOf(prefs.getString("curriculum", "المنهاج السوري") ?: "المنهاج السوري") }
+    var customSubject by remember { mutableStateOf("") }
+    var showProfile by remember { mutableStateOf(false) }
+    var savedPlans by remember { mutableStateOf(try { val a = JSONArray(prefs.getString("saved_plans", "[]")); (0 until a.length()).map { a.getJSONObject(it) } } catch (_: Exception) { emptyList<JSONObject>() }) }
+    val wordLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/msword")) { uri ->
+        if (uri != null && plan.isNotBlank()) try {
+            val html = "<html><meta charset=\\"UTF-8\\"><body dir=\\"rtl\\"><pre style=\\"white-space:pre-wrap;font-family:Arial\\">" + plan.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;") + "</pre></body></html>"
+            activity.contentResolver.openOutputStream(uri)?.use { it.write(html.toByteArray(Charsets.UTF_8)) }
+            message = "تم تصدير الملف لفتحه وتعديله في Word."
+        } catch (_: Exception) { message = "تعذر حفظ ملف Word." }
+    }
 
     Column(Modifier.fillMaxSize().background(Pale).verticalScroll(rememberScrollState()).padding(16.dp)) {
         Card(colors = CardDefaults.cardColors(containerColor = Navy), shape = RoundedCornerShape(24.dp)) {
@@ -76,9 +91,18 @@ private fun PlannerScreen(activity: ComponentActivity) {
             }
         }
         Spacer(Modifier.height(16.dp))
+        OutlinedButton(onClick = { showProfile = !showProfile }, modifier = Modifier.fillMaxWidth()) { Text("⚙ بيانات المعلم والمدرسة والمنهج") }
+        if (showProfile) {
+            InputField("اسم المعلم", teacher, { teacher = it; prefs.edit().putString("teacher", it).apply() }, "اسم المعلم")
+            InputField("اسم المدرسة", school, { school = it; prefs.edit().putString("school", it).apply() }, "اسم المدرسة")
+            InputField("التوقيع أو الصفة", signature, { signature = it; prefs.edit().putString("signature", it).apply() }, "معلم دمج")
+            InputField("المنهج (يمكن تغيير الاسم)", curriculum, { curriculum = it; prefs.edit().putString("curriculum", it).apply() }, "المنهاج السوري")
+            InputField("مادة إضافية اختيارية", customSubject, { customSubject = it }, "اكتب اسم مادة جديدة")
+            Text("تُحفظ بيانات المعلم والمدرسة على هذا الهاتف. يمكن كتابة اسم أي منهج لإضافته.", color = Ink, fontSize = 12.sp)
+        }
         Text("بيانات الدرس", fontSize = 20.sp, color = Navy, fontWeight = FontWeight.Bold)
         PickerField("الصف", grade, grades) { grade = it }
-        PickerField("المادة", subject, subjects) { subject = it }
+        PickerField("المادة", subject, if (customSubject.isBlank() || subjects.contains(customSubject.trim())) subjects else subjects + customSubject.trim()) { subject = it }
         PickerField("طريقة التدريس", method, teachingMethods) { method = it }
         InputField("عنوان الدرس", lesson, { lesson = it }, "مثال: الكسور المتكافئة")
         InputField("مدة الحصة", duration, { duration = it }, "45 دقيقة")
@@ -91,7 +115,7 @@ private fun PlannerScreen(activity: ComponentActivity) {
             if (lesson.isBlank()) {
                 message = "يرجى إدخال عنوان الدرس أولاً."
             } else {
-                plan = generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
+                plan = generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)\n                plan = plan.replace("تحضير درس", "تحضير درس — $curriculum").replace("إعداد: معلم دمج", "المعلم: ${teacher.ifBlank { "........................" }}\\nالمدرسة: ${school.ifBlank { "........................" }}\\nإعداد: $signature")
                 message = "تم إنشاء التحضير محليًا دون إنترنت. راجعه وعدّله ثم انسخه أو اطبعه."
             }
         }, modifier = Modifier.fillMaxWidth().height(54.dp),
@@ -107,6 +131,20 @@ private fun PlannerScreen(activity: ComponentActivity) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 360.dp), shape = RoundedCornerShape(16.dp), minLines = 12,
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Teal))
             Spacer(Modifier.height(10.dp))
+            Button(onClick = {
+                val arr = JSONArray().put(JSONObject().put("grade", grade).put("subject", subject).put("lesson", lesson).put("plan", plan))
+                savedPlans.forEach { arr.put(it) }; while (arr.length() > 30) arr.remove(arr.length() - 1)
+                prefs.edit().putString("saved_plans", arr.toString()).apply()
+                savedPlans = try { (0 until arr.length()).map { arr.getJSONObject(it) } } catch (_: Exception) { emptyList() }
+                message = "تم حفظ التحضير على الهاتف."
+            }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Teal)) { Text("💾 حفظ التحضير") }
+            if (savedPlans.isNotEmpty()) {
+                Text("التحاضير المحفوظة", color = Navy, fontWeight = FontWeight.Bold)
+                savedPlans.forEach { item ->
+                    OutlinedButton(onClick = { plan = item.optString("plan"); lesson = item.optString("lesson"); grade = item.optString("grade", grades[0]); subject = item.optString("subject", subjects[0]); message = "تم فتح التحضير المحفوظ." }, modifier = Modifier.fillMaxWidth()) { Text("${item.optString("grade")} • ${item.optString("subject")} • ${item.optString("lesson")}") }
+                }
+            }
+            OutlinedButton(onClick = { wordLauncher.launch("تحضير-${lesson.ifBlank { "درس" }}.doc") }, modifier = Modifier.fillMaxWidth()) { Text("📄 تصدير إلى Word") }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = {
                     val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -120,7 +158,7 @@ private fun PlannerScreen(activity: ComponentActivity) {
         Spacer(Modifier.height(20.dp))
         HorizontalDivider()
         Spacer(Modifier.height(12.dp))
-        Text("إعداد: معلم دمج", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Teal, fontWeight = FontWeight.Bold)
+        Text("إعداد: $signature", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Teal, fontWeight = FontWeight.Bold)\n        if (teacher.isNotBlank()) Text("المعلم: $teacher", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink)\n        if (school.isNotBlank()) Text("المدرسة: $school", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink)
         Text("بالتعاون مع أبو محمد وأبو عبدالله وعصام", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Ink, fontSize = 12.sp)
         Text("منصة معلمي الجزيرة السورية", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = Navy, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
