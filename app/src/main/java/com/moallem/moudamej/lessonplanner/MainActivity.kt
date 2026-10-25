@@ -73,6 +73,7 @@ private fun PlannerScreen(activity: ComponentActivity) {
     var school by remember { mutableStateOf(prefs.getString("school", "") ?: "") }
     var signature by remember { mutableStateOf(prefs.getString("signature", "معلم دمج") ?: "معلم دمج") }
     var curriculum by remember { mutableStateOf(prefs.getString("curriculum", "المنهاج السوري") ?: "المنهاج السوري") }
+    var geminiKey by remember { mutableStateOf(prefs.getString("gemini_key", "") ?: "") }
     var customSubject by remember { mutableStateOf("") }
     var showProfile by remember { mutableStateOf(false) }
     var savedPlans by remember { mutableStateOf(try { val a = JSONArray(prefs.getString("saved_plans", "[]")); (0 until a.length()).map { a.getJSONObject(it) } } catch (_: Exception) { emptyList<JSONObject>() }) }
@@ -99,6 +100,8 @@ private fun PlannerScreen(activity: ComponentActivity) {
             InputField("اسم المدرسة", school, { school = it; prefs.edit().putString("school", it).apply() }, "اسم المدرسة")
             InputField("التوقيع أو الصفة", signature, { signature = it; prefs.edit().putString("signature", it).apply() }, "معلم دمج")
             InputField("المنهج (يمكن تغيير الاسم)", curriculum, { curriculum = it; prefs.edit().putString("curriculum", it).apply() }, "المنهاج السوري")
+            InputField("مفتاح Gemini (اختياري للذكاء الاصطناعي عبر الإنترنت)", geminiKey, { geminiKey = it; prefs.edit().putString("gemini_key", it).apply() }, "أدخل مفتاحك إن توفر")
+            Text("المفتاح اختياري ويُحفظ على هذا الهاتف. عند تركه فارغًا يعمل التحضير المحلي دون إنترنت.", color = Ink, fontSize = 12.sp)
             InputField("مادة إضافية اختيارية", customSubject, { customSubject = it }, "اكتب اسم مادة جديدة")
             Text("تُحفظ بيانات المعلم والمدرسة على هذا الهاتف. يمكن كتابة اسم أي منهج لإضافته.", color = Ink, fontSize = 12.sp)
         }
@@ -116,15 +119,28 @@ private fun PlannerScreen(activity: ComponentActivity) {
         Button(onClick = {
             if (lesson.isBlank()) {
                 message = "يرجى إدخال عنوان الدرس أولاً."
+            } else if (geminiKey.isNotBlank()) {
+                busy = true
+                message = "يجري إنشاء التحضير بالذكاء الاصطناعي عبر الإنترنت..."
+                thread {
+                    val result = generateOnlinePlan(geminiKey.trim(), grade, subject, lesson.trim(), method, duration, notes, curriculum)
+                    Handler(Looper.getMainLooper()).post {
+                        plan = result ?: generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
+                        plan = plan.replace("تحضير درس", "تحضير درس — $curriculum")
+                        plan = plan.replace("إعداد: معلم دمج", "المعلم: " + teacher.ifBlank { "........................" } + "\\nالمدرسة: " + school.ifBlank { "........................" } + "\\nإعداد: " + signature)
+                        message = if (result != null) "تم إنشاء التحضير عبر الإنترنت. راجعه وعدّله قبل الطباعة." else "تعذر الاتصال بالذكاء الاصطناعي؛ أُنشئ تحضير محلي بديل. تحقق من المفتاح والإنترنت."
+                        busy = false
+                    }
+                }
             } else {
                 plan = generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
                 plan = plan.replace("تحضير درس", "تحضير درس — $curriculum")
                 plan = plan.replace("إعداد: معلم دمج", "المعلم: " + teacher.ifBlank { "........................" } + "\\nالمدرسة: " + school.ifBlank { "........................" } + "\\nإعداد: " + signature)
                 message = "تم إنشاء التحضير محليًا دون إنترنت. راجعه وعدّله ثم انسخه أو اطبعه."
             }
-        }, modifier = Modifier.fillMaxWidth().height(54.dp),
+        }, enabled = !busy, modifier = Modifier.fillMaxWidth().height(54.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Teal), shape = RoundedCornerShape(15.dp)) {
-            Text("📘 إنشاء التحضير دون إنترنت", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(if (busy) "⏳ جارٍ إنشاء التحضير..." else if (geminiKey.isNotBlank()) "✨ إنشاء التحضير بالذكاء الاصطناعي" else "📘 إنشاء التحضير دون إنترنت", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(8.dp))
         Text(message, color = Ink, fontSize = 13.sp, lineHeight = 20.sp)
@@ -283,6 +299,42 @@ private fun generateOfflinePlan(grade: String, subject: String, lesson: String, 
 بالتعاون مع أبو محمد وأبو عبدالله وعصام
 منصة معلمي الجزيرة السورية
 """.trimIndent()
+}
+
+private fun generateOnlinePlan(apiKey: String, grade: String, subject: String, lesson: String, method: String, duration: String, notes: String, curriculum: String): String? {
+    var connection: HttpURLConnection? = null
+    return try {
+        val prompt = """أنت خبير في طرائق التدريس ومناهج التعليم الأساسي السوري. اكتب تحضيرًا تربويًا عربيًا منظمًا للبيانات التالية:
+المنهاج: $curriculum
+الصف: $grade
+المادة: $subject
+عنوان الدرس: $lesson
+طريقة التدريس: $method
+مدة الحصة: $duration
+ملاحظات المعلم: $notes
+استخدم أهدافًا قابلة للملاحظة والقياس، وتمهيدًا، ووسائل، وخطوات تدريس، وأنشطة، وتقويمًا، وفروقًا فردية، وواجبًا. لا تدّعِ أنك نقلت نصًا من الكتاب المدرسي إن لم يُرفق محتواه. لا تخترع أرقام صفحات أو نصوصًا رسمية. وزّع الزمن بما يناسب مدة الحصة. أخرج النص فقط بالعربية."""
+        val payload = JSONObject()
+            .put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+            .put("generationConfig", JSONObject().put("temperature", 0.4).put("maxOutputTokens", 3500))
+        connection = (URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + URLEncoder.encode(apiKey, "UTF-8")).openConnection() as HttpURLConnection)
+        connection.requestMethod = "POST"
+        connection.connectTimeout = 15000
+        connection.readTimeout = 45000
+        connection.doOutput = true
+        connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+        OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(payload.toString()) }
+        val code = connection.responseCode
+        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+        val response = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        if (code !in 200..299) return null
+        val root = JSONObject(response)
+        root.optJSONArray("candidates")?.optJSONObject(0)?.optJSONObject("content")
+            ?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")?.takeIf { it.isNotBlank() }
+    } catch (_: Exception) {
+        null
+    } finally {
+        connection?.disconnect()
+    }
 }
 
 private fun printPlan(context: Context, text: String) {
