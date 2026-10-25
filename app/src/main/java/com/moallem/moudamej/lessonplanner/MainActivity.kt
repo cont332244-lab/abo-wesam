@@ -11,7 +11,9 @@ import android.print.PrintManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent\nimport androidx.activity.compose.rememberLauncherForActivityResult\nimport androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -115,7 +117,9 @@ private fun PlannerScreen(activity: ComponentActivity) {
             if (lesson.isBlank()) {
                 message = "يرجى إدخال عنوان الدرس أولاً."
             } else {
-                plan = generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)\n                plan = plan.replace("تحضير درس", "تحضير درس — $curriculum").replace("إعداد: معلم دمج", "المعلم: ${teacher.ifBlank { "........................" }}\\nالمدرسة: ${school.ifBlank { "........................" }}\\nإعداد: $signature")
+                plan = generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
+                plan = plan.replace("تحضير درس", "تحضير درس — $curriculum")
+                plan = plan.replace("إعداد: معلم دمج", "المعلم: " + teacher.ifBlank { "........................" } + "\\nالمدرسة: " + school.ifBlank { "........................" } + "\\nإعداد: " + signature)
                 message = "تم إنشاء التحضير محليًا دون إنترنت. راجعه وعدّله ثم انسخه أو اطبعه."
             }
         }, modifier = Modifier.fillMaxWidth().height(54.dp),
