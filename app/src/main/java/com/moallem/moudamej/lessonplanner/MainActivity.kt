@@ -42,6 +42,7 @@ private val Navy = Color(0xFF183153)
 private val Teal = Color(0xFF138A83)
 private val Pale = Color(0xFFF3F7FA)
 private val Ink = Color(0xFF243447)
+private val outputLanguages = listOf("العربية", "English")
 private val grades = listOf("الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس")
 private val subjects = listOf("اللغة العربية", "الرياضيات", "اللغة الإنكليزية", "العلوم", "الاجتماعيات", "التربية الإسلامية", "الفنون", "الرياضة", "أخرى")
 private val teachingMethods = listOf("التعلّم النشط", "التعلّم بالاكتشاف", "التعلّم التعاوني", "الطريقة الاستقرائية", "الطريقة الاستنتاجية", "حلّ المشكلات", "الحوار والمناقشة", "العصف الذهني", "التعلّم باللعب", "التعلّم بالمشروعات", "التعليم المتمايز", "الشرح والنمذجة", "التعلّم بالاستقصاء")
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun PlannerScreen(activity: ComponentActivity) {
+    var outputLanguage by remember { mutableStateOf(outputLanguages[0]) }
     var grade by remember { mutableStateOf(grades[0]) }
     var subject by remember { mutableStateOf(subjects[0]) }
     var lesson by remember { mutableStateOf("") }
@@ -106,6 +108,7 @@ private fun PlannerScreen(activity: ComponentActivity) {
             Text("تُحفظ بيانات المعلم والمدرسة على هذا الهاتف. يمكن كتابة اسم أي منهج لإضافته.", color = Ink, fontSize = 12.sp)
         }
         Text("بيانات الدرس", fontSize = 20.sp, color = Navy, fontWeight = FontWeight.Bold)
+        PickerField("لغة التحضير", outputLanguage, outputLanguages) { outputLanguage = it }
         PickerField("الصف", grade, grades) { grade = it }
         PickerField("المادة", subject, if (customSubject.isBlank() || subjects.contains(customSubject.trim())) subjects else subjects + customSubject.trim()) { subject = it }
         PickerField("طريقة التدريس", method, teachingMethods) { method = it }
@@ -119,13 +122,13 @@ private fun PlannerScreen(activity: ComponentActivity) {
         Button(onClick = {
             if (lesson.isBlank()) {
                 message = "يرجى إدخال عنوان الدرس أولاً."
-            } else if (geminiKey.isNotBlank()) {
+            } else if (geminiKey.isNotBlank() && outputLanguage != "English") {
                 busy = true
                 message = "يجري إنشاء التحضير بالذكاء الاصطناعي عبر الإنترنت..."
                 thread {
                     val result = generateOnlinePlan(geminiKey.trim(), grade, subject, lesson.trim(), method, duration, notes, curriculum)
                     Handler(Looper.getMainLooper()).post {
-                        plan = result ?: generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
+                        plan = result ?: if (outputLanguage == "English") generateEnglishOfflinePlan(grade, subject, lesson.trim(), method, duration, notes) else generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
                         plan = plan.replace("تحضير درس", "تحضير درس — $curriculum")
                         plan = plan.replace("إعداد: معلم دمج", "المعلم: " + teacher.ifBlank { "........................" } + "\\nالمدرسة: " + school.ifBlank { "........................" } + "\\nإعداد: " + signature)
                         message = if (result != null) "تم إنشاء التحضير عبر الإنترنت. راجعه وعدّله قبل الطباعة." else "تعذر الاتصال بالذكاء الاصطناعي؛ أُنشئ تحضير محلي بديل. تحقق من المفتاح والإنترنت."
@@ -133,7 +136,7 @@ private fun PlannerScreen(activity: ComponentActivity) {
                     }
                 }
             } else {
-                plan = generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
+                plan = if (outputLanguage == "English") generateEnglishOfflinePlan(grade, subject, lesson.trim(), method, duration, notes) else generateOfflinePlan(grade, subject, lesson.trim(), method, duration, notes)
                 plan = plan.replace("تحضير درس", "تحضير درس — $curriculum")
                 plan = plan.replace("إعداد: معلم دمج", "المعلم: " + teacher.ifBlank { "........................" } + "\\nالمدرسة: " + school.ifBlank { "........................" } + "\\nإعداد: " + signature)
                 message = "تم إنشاء التحضير محليًا دون إنترنت. راجعه وعدّله ثم انسخه أو اطبعه."
