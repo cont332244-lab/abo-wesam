@@ -81,7 +81,8 @@ private fun PlannerScreen(activity: ComponentActivity) {
     var savedPlans by remember { mutableStateOf(try { val a = JSONArray(prefs.getString("saved_plans", "[]")); (0 until a.length()).map { a.getJSONObject(it) } } catch (_: Exception) { emptyList<JSONObject>() }) }
     val wordLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/msword")) { uri ->
         if (uri != null && plan.isNotBlank()) try {
-            val html = "<html><meta charset=\"UTF-8\"><body dir=\"rtl\"><pre style=\"white-space:pre-wrap;font-family:Arial\">" + plan.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;") + "</pre></body></html>"
+            val direction = if (outputLanguage == "English") "ltr" else "rtl"
+            val html = "<html><meta charset=\"UTF-8\"><body dir=\"" + direction + "\"><pre style=\"white-space:pre-wrap;font-family:Arial\">" + plan.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;") + "</pre></body></html>"
             activity.contentResolver.openOutputStream(uri)?.use { it.write(html.toByteArray(Charsets.UTF_8)) }
             message = "تم تصدير الملف لفتحه وتعديله في Word."
         } catch (_: Exception) { message = "تعذر حفظ ملف Word." }
@@ -150,9 +151,11 @@ private fun PlannerScreen(activity: ComponentActivity) {
         if (plan.isNotBlank()) {
             Spacer(Modifier.height(16.dp))
             Text("التحضير الناتج — قابل للتعديل", fontSize = 20.sp, color = Navy, fontWeight = FontWeight.Bold)
-            OutlinedTextField(value = plan, onValueChange = { plan = it },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 360.dp), shape = RoundedCornerShape(16.dp), minLines = 12,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Teal))
+            CompositionLocalProvider(LocalLayoutDirection provides if (outputLanguage == "English") LayoutDirection.Ltr else LayoutDirection.Rtl) {
+                OutlinedTextField(value = plan, onValueChange = { plan = it },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 360.dp), shape = RoundedCornerShape(16.dp), minLines = 12,
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Teal))
+            }
             Spacer(Modifier.height(10.dp))
             Button(onClick = {
                 val arr = JSONArray().put(JSONObject().put("grade", grade).put("subject", subject).put("lesson", lesson).put("plan", plan))
@@ -174,7 +177,7 @@ private fun PlannerScreen(activity: ComponentActivity) {
                     clipboard.setPrimaryClip(ClipData.newPlainText("تحضير الدرس", plan))
                     message = "تم نسخ التحضير إلى الحافظة."
                 }, modifier = Modifier.weight(1f)) { Text("نسخ التحضير") }
-                Button(onClick = { printPlan(activity, plan) }, modifier = Modifier.weight(1f),
+                Button(onClick = { printPlan(activity, plan, outputLanguage == "English") }, modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Navy)) { Text("طباعة / PDF") }
             }
         }
@@ -340,7 +343,7 @@ private fun generateOnlinePlan(apiKey: String, grade: String, subject: String, l
     }
 }
 
-private fun printPlan(context: Context, text: String) {
+private fun printPlan(context: Context, text: String, isEnglish: Boolean) {
     val webView = WebView(context)
     val escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
     webView.webViewClient = object : WebViewClient() {
@@ -349,5 +352,7 @@ private fun printPlan(context: Context, text: String) {
             manager.print("تحضير الدرس", view.createPrintDocumentAdapter("تحضير الدرس"), PrintAttributes.Builder().build())
         }
     }
-    webView.loadDataWithBaseURL(null, "<html><meta charset=\"utf-8\"><body dir=\"rtl\" style=\"font-family:sans-serif;padding:24px;line-height:1.8;font-size:14px\"><h2>دفتر التحضير الإلكتروني</h2>$escaped</body></html>", "text/html", "UTF-8", null)
+    val direction = if (isEnglish) "ltr" else "rtl"
+    val heading = if (isEnglish) "Lesson Planner" else "دفتر التحضير الإلكتروني"
+    webView.loadDataWithBaseURL(null, "<html><meta charset=\"utf-8\"><body dir=\"$direction\" style=\"font-family:sans-serif;padding:24px;line-height:1.8;font-size:14px\"><h2>$heading</h2>$escaped</body></html>", "text/html", "UTF-8", null)
 }
