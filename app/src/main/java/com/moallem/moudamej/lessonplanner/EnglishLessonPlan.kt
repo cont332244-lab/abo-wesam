@@ -9,6 +9,26 @@ internal fun generateEnglishOfflinePlan(
     notes: String
 ): String {
     val noteText = if (notes.isBlank()) "No additional notes." else notes
+    val gradeEn = when (grade) {
+        "الصف الأول" -> "Grade 1"; "الصف الثاني" -> "Grade 2"; "الصف الثالث" -> "Grade 3"
+        "الصف الرابع" -> "Grade 4"; "الصف الخامس" -> "Grade 5"; "الصف السادس" -> "Grade 6"
+        else -> grade
+    }
+    val subjectEn = when (subject) {
+        "اللغة العربية" -> "Arabic"; "الرياضيات" -> "Mathematics"; "اللغة الإنكليزية" -> "English"
+        "العلوم" -> "Science"; "الاجتماعيات" -> "Social Studies"; "التربية الإسلامية" -> "Islamic Education"
+        "الفنون" -> "Arts"; "الرياضة" -> "Physical Education"; "أخرى" -> "Other"
+        else -> subject
+    }
+    val methodEn = when (method) {
+        "التعلّم النشط" -> "Active Learning"; "التعلّم بالاكتشاف" -> "Discovery Learning"
+        "التعلّم التعاوني" -> "Cooperative Learning"; "الطريقة الاستقرائية" -> "Inductive Method"
+        "الطريقة الاستنتاجية" -> "Deductive Method"; "حلّ المشكلات" -> "Problem-Based Learning"
+        "الحوار والمناقشة" -> "Discussion"; "العصف الذهني" -> "Brainstorming"
+        "التعلّم باللعب" -> "Game-Based Learning"; "التعلّم بالمشروعات" -> "Project-Based Learning"
+        "التعليم المتمايز" -> "Differentiated Instruction"; "الشرح والنمذجة" -> "Direct Instruction and Modelling"
+        "التعلّم بالاستقصاء" -> "Inquiry-Based Learning"; else -> method
+    }
     val methodText = when (method) {
         "التعلّم بالاكتشاف" -> "Present examples and guide pupils to observe, compare, and discover the key idea before discussing their conclusions."
         "التعلّم التعاوني" -> "Organize pupils into small groups with clear roles. Give each group a task and invite them to share their findings."
