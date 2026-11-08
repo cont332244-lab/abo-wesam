@@ -122,7 +122,7 @@ private fun PlannerScreen(activity: ComponentActivity) {
         Button(onClick = {
             if (lesson.isBlank()) {
                 message = "يرجى إدخال عنوان الدرس أولاً."
-            } else if (geminiKey.isNotBlank()) {
+            } else if (geminiKey.isNotBlank() && outputLanguage != "English") {
                 busy = true
                 message = "يجري إنشاء التحضير بالذكاء الاصطناعي عبر الإنترنت..."
                 thread {
