@@ -1,4 +1,5 @@
 name: Build Lesson Planner APK
+# Rebuild after adding Arabic translation to English lesson plans
 
 on:
   workflow_dispatch:
